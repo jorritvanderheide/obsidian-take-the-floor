@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fit, moved, withNotes } from '../src/core/talk';
+import { fit, looksLikeSlides, moved, withNotes } from '../src/core/talk';
 
 describe('withNotes', () => {
 	const slide = (html: string, closing = false) => ({ html, closing });
@@ -49,5 +49,19 @@ describe('fit', () => {
 
 	it('leaves room above and below on a taller screen', () => {
 		expect(fit({ width: 1920, height: 1280 }, slide)).toEqual({ scale: 1, left: 0, top: 100 });
+	});
+});
+
+describe('looksLikeSlides', () => {
+	it('says yes to a note with a rule', () => {
+		expect(looksLikeSlides([{ type: 'yaml' }, { type: 'heading' }, { type: 'thematicBreak' }, { type: 'paragraph' }])).toBe(true);
+	});
+
+	it('says no to one without, its properties included', () => {
+		expect(looksLikeSlides([{ type: 'yaml' }, { type: 'heading' }, { type: 'paragraph' }])).toBe(false);
+	});
+
+	it('says no while Obsidian has not read the note yet', () => {
+		expect(looksLikeSlides(undefined)).toBe(false);
 	});
 });

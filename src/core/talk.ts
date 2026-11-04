@@ -30,3 +30,12 @@ export function fit(room: { width: number; height: number }, slide: { width: num
 	const scale = Math.min(room.width / slide.width, room.height / slide.height);
 	return { scale, left: (room.width - slide.width * scale) / 2, top: (room.height - slide.height * scale) / 2 };
 }
+
+/**
+ * Whether a note looks like slides, for showing it a Present button: it has a
+ * rule, as Obsidian reads it. `***` counts too, which `slidesOf` leaves on its
+ * slide, so this only decides what to offer. Present works on any note.
+ */
+export function looksLikeSlides(sections: { type: string }[] | undefined): boolean {
+	return sections?.some((section) => section.type === 'thematicBreak') ?? false;
+}

@@ -1,9 +1,10 @@
-import { Notice, Plugin, TFile } from 'obsidian';
+import { debounce, Notice, Plugin, TFile } from 'obsidian';
 import { ExportError } from 'obsidian-citation-core';
 import { Presentation } from './commands/presentation';
 import { renderTalk } from './commands/render';
 import { loadSettings, type Settings } from './core/settings';
 import { SettingsTab } from './ui/settings-tab';
+import { decorate, undecorate } from './ui/title-bar';
 import { NOTES_VIEW, NotesView, SLIDESHOW_VIEW, SlideshowView } from './ui/views';
 
 export default class TakeTheFloor extends Plugin {
@@ -11,6 +12,7 @@ export default class TakeTheFloor extends Plugin {
 	private presentation: Presentation | null = null;
 	/** While a note is on its way to pandoc, so a second press doesn't start a second talk. */
 	private starting = false;
+	private unloaded = false;
 
 	async onload() {
 		this.settings = loadSettings(await this.loadData());
@@ -66,9 +68,20 @@ export default class TakeTheFloor extends Plugin {
 				);
 			}),
 		);
+
+		// The title bar follows the note: a view rebuilds its actions when it
+		// switches between editing and reading, and a note's rules are in what the
+		// metadata cache says.
+		this.registerEvent(this.app.workspace.on('layout-change', () => this.decorate()));
+		this.registerEvent(this.app.workspace.on('active-leaf-change', () => this.decorate()));
+		this.registerEvent(this.app.workspace.on('file-open', () => this.decorate()));
+		this.registerEvent(this.app.metadataCache.on('changed', () => this.decorate()));
+		this.app.workspace.onLayoutReady(() => this.decorate());
 	}
 
 	onunload() {
+		this.unloaded = true;
+		undecorate(this.app);
 		// A slideshow left behind would have nothing to show, and nothing to end it.
 		this.presentation?.end();
 	}
@@ -77,8 +90,21 @@ export default class TakeTheFloor extends Plugin {
 		await this.saveData(this.settings);
 	}
 
+	/**
+	 * Deferred, because `layout-change` fires before a view rebuilds its
+	 * actions, and coalesced, because opening a note fires several events in a
+	 * row.
+	 */
+	private readonly decorate = debounce(
+		() => {
+			if (!this.unloaded) decorate(this.app, (file) => this.present(file), this.presentation !== null);
+		},
+		20,
+		true,
+	);
+
 	private present(file: TFile) {
-		if (this.starting) return;
+		if (this.starting || this.presentation !== null) return;
 		this.starting = true;
 		this.attempt(
 			(async () => {
@@ -86,7 +112,9 @@ export default class TakeTheFloor extends Plugin {
 				if (slides === null) return;
 				this.presentation = new Presentation(this.app, slides, file.path, () => {
 					this.presentation = null;
+					this.decorate();
 				});
+				this.decorate();
 				await this.presentation.open();
 			})().finally(() => {
 				this.starting = false;

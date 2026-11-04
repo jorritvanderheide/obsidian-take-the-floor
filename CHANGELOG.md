@@ -7,6 +7,8 @@ What changed in each release of Take the Floor, newest first.
 - **Present** shows a note as slides in a window of its own, with `---` between
   slides, and your speaker notes in a pane in Obsidian. Notes are your
   `%%comments%%`, and they never reach a slide.
+- A note with a slide break has a Present button in its title bar. **Present** also
+  works on any other note, from the ribbon, the file menu or the command palette.
 - Citations come out as in Due Credit. Each slide has the full reference of what
   it cites at its foot, and the reference list closes the talk.
 - While you present, the page and arrow keys and the space bar change slides,
