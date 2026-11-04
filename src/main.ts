@@ -1,6 +1,6 @@
 import { debounce, Notice, Plugin, TFile } from 'obsidian';
 import { ExportError } from 'obsidian-citation-core';
-import { Presentation } from './commands/presentation';
+import { chooseScreen, Presentation } from './commands/presentation';
 import { renderTalk } from './commands/render';
 import { loadSettings, type Settings } from './core/settings';
 import { SettingsTab } from './ui/settings-tab';
@@ -110,7 +110,9 @@ export default class TakeTheFloor extends Plugin {
 			(async () => {
 				const slides = await renderTalk(this, file);
 				if (slides === null) return;
-				this.presentation = new Presentation(this.app, slides, file.path, () => {
+				const where = await chooseScreen(this.app);
+				if (where === null) return;
+				this.presentation = new Presentation(this.app, slides, file.path, where.places, where.screen, () => {
 					this.presentation = null;
 					this.decorate();
 				});

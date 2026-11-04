@@ -74,6 +74,7 @@ export class SlideshowView extends ItemView {
 
 export class NotesView extends ItemView {
 	private heading: HTMLElement | null = null;
+	private message: HTMLElement | null = null;
 	private body: HTMLElement | null = null;
 	private rendered: Component | null = null;
 	private stop: (() => void) | null = null;
@@ -112,6 +113,7 @@ export class NotesView extends ItemView {
 		button('Previous slide', 'arrow-left', () => talk.move(-1));
 		button('Next slide', 'arrow-right', () => talk.move(1));
 		button('End presentation', 'square', () => talk.end());
+		this.message = this.contentEl.createDiv({ cls: 'take-the-floor-notes-message' });
 		this.body = this.contentEl.createDiv({ cls: 'take-the-floor-notes-body markdown-rendered' });
 		// A link in your notes opens the note, such as a paper during the questions.
 		this.registerDomEvent(this.body, 'click', (event) => {
@@ -130,6 +132,8 @@ export class NotesView extends ItemView {
 		const slide = talk.slides[talk.index];
 		if (!this.heading || !this.body || !slide) return;
 		this.heading.setText(`Slide ${talk.index + 1} of ${talk.slides.length}`);
+		this.message?.setText(talk.message);
+		this.message?.toggle(talk.message !== '');
 		this.body.empty();
 		if (this.rendered) this.removeChild(this.rendered);
 		this.rendered = this.addChild(new Component());

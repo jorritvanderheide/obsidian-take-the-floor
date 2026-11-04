@@ -78,6 +78,14 @@
 	color: var(--text-muted);
 }
 
+.take-the-floor-notes-message {
+	margin-bottom: var(--size-4-4);
+	padding: var(--size-4-2) var(--size-4-3);
+	border-radius: var(--radius-s);
+	background: var(--background-modifier-message);
+	color: var(--text-normal);
+}
+
 .take-the-floor-notes-body {
 	font-size: 1.4em;
 }
