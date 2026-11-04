@@ -1,0 +1,39 @@
+{
+	"name": "obsidian-take-the-floor",
+	"version": "0.1.0",
+	"description": "Present a note as slides, with its links turned into real citations and your speaker notes on your own screen.",
+	"main": "main.js",
+	"type": "module",
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"version": "node version-bump.mjs && git add manifest.json versions.json",
+		"lint": "eslint . --max-warnings 0",
+		"test": "vitest run"
+	},
+	"keywords": [
+		"obsidian",
+		"slides",
+		"presentation",
+		"citations",
+		"pandoc"
+	],
+	"author": "Jorrit van der Heide",
+	"license": "EUPL-1.2",
+	"devDependencies": {
+		"@codemirror/state": "6.5.0",
+		"@codemirror/view": "6.38.6",
+		"@eslint/js": "^9.39.4",
+		"@types/node": "^22.15.17",
+		"esbuild": "0.25.5",
+		"eslint": "^9.39.4",
+		"eslint-plugin-obsidianmd": "^0.4.0",
+		"globals": "^17.6.0",
+		"jiti": "^2.6.1",
+		"obsidian": "~1.13.1",
+		"obsidian-citation-core": "github:jorritvanderheide/obsidian-citation-core#2fa737817ea3155d08bc57b2076ec65d3bd16a09",
+		"typescript": "^5.8.3",
+		"typescript-eslint": "^8.59.1",
+		"vitest": "^3.2.7"
+	}
+}
