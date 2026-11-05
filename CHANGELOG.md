@@ -20,8 +20,9 @@ What changed in each release of Take the Floor, newest first.
   wherever your cursor is, Escape ends the talk, and your computer won't lock or
   go to sleep.
 - The notes pane shows the slide on the screen, the next one and a timer, and says
-  when a slide is too long to fit. B or the full stop blanks the screen, and the next
-  key brings the same slide back.
+  when a slide is too long to fit. B, the full stop or the eye button hides the slides,
+  and you can then edit your note and watch the slide change in the pane. Esc, the
+  eye button or your clicker brings them back, with your changes.
 - **Preview slides** opens a tab with every slide of a note, which updates as you
   save, and marks any that are too long.
 - **Export slides to PDF** makes a PDF with one slide to a page, without your notes.

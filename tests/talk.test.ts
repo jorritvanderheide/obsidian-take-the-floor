@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clock, fit, isPresentation, isTooLong, moved, stepped, tooLongMessage, withNotes } from '../src/core/talk';
+import { clock, fit, keyAction, isPresentation, isTooLong, moved, tooLongMessage, withNotes } from '../src/core/talk';
 
 describe('withNotes', () => {
 	const slide = (html: string, closing = false) => ({ html, closing });
@@ -68,17 +68,6 @@ describe('isPresentation', () => {
 	});
 });
 
-describe('stepped', () => {
-	it('moves when the screen shows a slide', () => {
-		expect(stepped({ index: 1, blank: false }, 1, 3)).toEqual({ index: 2, blank: false });
-	});
-
-	it('only brings the same slide back off a blank screen, whichever way', () => {
-		expect(stepped({ index: 1, blank: true }, 1, 3)).toEqual({ index: 1, blank: false });
-		expect(stepped({ index: 1, blank: true }, -1, 3)).toEqual({ index: 1, blank: false });
-	});
-});
-
 describe('clock', () => {
 	it.each([
 		[0, '0:00'],
@@ -111,5 +100,35 @@ describe('tooLongMessage', () => {
 	it('names several', () => {
 		expect(tooLongMessage([3, 7])).toBe('Slides 3 and 7 are too long, so their ends are cut off.');
 		expect(tooLongMessage([1, 3, 7])).toBe('Slides 1, 3 and 7 are too long, so their ends are cut off.');
+	});
+});
+
+describe('keyAction', () => {
+	it.each(['PageDown', 'ArrowRight', 'ArrowDown', ' '])('goes on with %j', (key) => {
+		expect(keyAction(key, false)).toBe('next');
+	});
+
+	it.each(['PageUp', 'ArrowLeft', 'ArrowUp'])('goes back with %s', (key) => {
+		expect(keyAction(key, false)).toBe('previous');
+	});
+
+	it('ends with Esc, hides with what a clicker sends, and fills the screen with F', () => {
+		expect(keyAction('Escape', false)).toBe('end');
+		expect(keyAction('b', false)).toBe('hide');
+		expect(keyAction('.', false)).toBe('hide');
+		expect(keyAction('f', false)).toBe('fullscreen');
+	});
+
+	it('leaves other keys alone, so your typing and hotkeys still work', () => {
+		expect(keyAction('x', false)).toBeNull();
+		expect(keyAction('Enter', false)).toBeNull();
+	});
+
+	it.each(['PageDown', 'PageUp', 'Escape'])('brings hidden slides back with %s', (key) => {
+		expect(keyAction(key, true)).toBe('reveal');
+	});
+
+	it.each([' ', 'b', '.', 'f', 'ArrowRight', 'ArrowLeft', 'x'])('leaves %j to your note while they are hidden', (key) => {
+		expect(keyAction(key, true)).toBeNull();
 	});
 });

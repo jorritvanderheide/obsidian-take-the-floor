@@ -74,7 +74,7 @@ export default class TakeTheFloor extends Plugin {
 		});
 		during('next-slide', 'Next slide', (talk) => talk.move(1));
 		during('previous-slide', 'Previous slide', (talk) => talk.move(-1));
-		during('blank', 'Blank the screen', (talk) => talk.toggleBlank());
+		during('blank', 'Hide or show the slides', (talk) => talk.toggleBlank());
 		during('end', 'End presentation', (talk) => talk.end());
 
 		this.addRibbonIcon('presentation', 'Present', () => {
@@ -153,7 +153,7 @@ export default class TakeTheFloor extends Plugin {
 				if (slides === null) return;
 				const where = await chooseScreen(this.app);
 				if (where === null) return;
-				this.presentation = new Presentation(this.app, slides, file.path, where.places, where.screen, () => {
+				this.presentation = new Presentation(this.app, slides, file.path, () => renderTalk(this, file, { download: false, missing: false }), where.places, where.screen, () => {
 					this.presentation = null;
 					this.decorate();
 				});

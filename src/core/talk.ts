@@ -40,18 +40,6 @@ export function isPresentation(frontmatter: Record<string, unknown> | undefined)
 	return frontmatter?.presentation === true;
 }
 
-/** Where a talk is. */
-export interface Position {
-	index: number;
-	/** Whether the screen shows nothing for now. */
-	blank: boolean;
-}
-
-/** A step from here. Off a blank screen it only brings the same slide back, so the audience never misses one. */
-export function stepped(position: Position, step: number, count: number): Position {
-	return position.blank ? { index: position.index, blank: false } : { index: moved(position.index, step, count), blank: false };
-}
-
 /** Time passed, as a clock shows it: `4:07`, and `1:02:03` past the hour. */
 export function clock(ms: number): string {
 	const seconds = Math.max(0, Math.floor(ms / 1000));
@@ -72,4 +60,40 @@ export function tooLongMessage(numbers: number[]): string {
 	if (only === undefined) return '';
 	if (numbers.length === 1) return `Slide ${only} is too long, so its end is cut off.`;
 	return `Slides ${numbers.slice(0, -1).join(', ')} and ${numbers[numbers.length - 1]} are too long, so their ends are cut off.`;
+}
+
+/** What a key does during a talk. */
+export type KeyAction = 'next' | 'previous' | 'end' | 'hide' | 'reveal' | 'fullscreen';
+
+/**
+ * What a key does, or null for one that isn't the talk's. While the slides show
+ * these keys are the talk's wherever the cursor is, because a clicker that types
+ * into a note is the worst thing that can happen. While they're hidden the keyboard
+ * is yours, for editing, and only a clicker's keys and Esc bring them back.
+ */
+export function keyAction(key: string, blank: boolean): KeyAction | null {
+	if (blank) return key === 'PageDown' || key === 'PageUp' || key === 'Escape' ? 'reveal' : null;
+	switch (key) {
+		case 'PageDown':
+		case 'ArrowRight':
+		case 'ArrowDown':
+		case ' ':
+			return 'next';
+		case 'PageUp':
+		case 'ArrowLeft':
+		case 'ArrowUp':
+			return 'previous';
+		case 'Escape':
+			return 'end';
+		// Some clickers have a button for this, which sends one of these.
+		case 'b':
+		case 'B':
+		case '.':
+			return 'hide';
+		case 'f':
+		case 'F':
+			return 'fullscreen';
+		default:
+			return null;
+	}
 }

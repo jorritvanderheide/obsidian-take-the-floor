@@ -1,17 +1,17 @@
 // A talk in progress: its two windows, its keys, and which slide it's on.
 import { remote, type BrowserWindow } from 'electron';
-import { Notice, Scope, type App, type WorkspaceLeaf } from 'obsidian';
+import { Notice, type App, type EventRef, type WorkspaceLeaf } from 'obsidian';
 import { screenToUse, type Screen } from '../core/screens';
-import { stepped, type Slide } from '../core/talk';
+import { keyAction, moved, type Slide } from '../core/talk';
 import { pickScreen } from '../ui/screen-picker';
 import { NOTES_VIEW, SLIDESHOW_VIEW } from '../ui/views';
 import { placesHere, type Places } from './placement';
 
-const NEXT = ['PageDown', 'ArrowRight', 'ArrowDown', ' '];
-const PREVIOUS = ['PageUp', 'ArrowLeft', 'ArrowUp'];
 /** How long a screen that came back gets to settle: ten seconds, in steps. */
 const RETURN_TRIES = 20;
 const RETURN_WAIT = 500;
+/** How long after your last change a blanked talk renders it again. */
+const SETTLE = 800;
 
 /**
  * Where the slideshow goes, asked before anything opens: the places, the screen,
@@ -50,42 +50,48 @@ export class Presentation {
 	/** What you need to know during the talk, in the notes pane: a notice can land in the slideshow's window, behind the slides and in front of nobody. */
 	message = '';
 	private readonly listeners = new Set<() => void>();
-	private readonly scope: Scope;
+	private edits: EventRef[] = [];
+	private settling = 0;
+	/** The newest render wins: a slower one that started earlier is dropped. */
+	private latest = 0;
 	private readonly blocker: number;
 	private leaves: WorkspaceLeaf[] = [];
 	private slideshow: BrowserWindow | null = null;
 	private ended = false;
+	/**
+	 * Before anything else sees the key, with the capture flag. A Scope can't do this:
+	 * an editor that takes the focus puts its own on top, and the keys go into the note.
+	 * A dialog you opened keeps its keys.
+	 */
+	private readonly onKey = (event: KeyboardEvent) => {
+		if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+		if (event.target instanceof Element && event.target.closest('.modal-container')) return;
+		const action = keyAction(event.key, this.blank);
+		if (action === null) return;
+		event.preventDefault();
+		event.stopPropagation();
+		if (action === 'next') this.move(1);
+		else if (action === 'previous') this.move(-1);
+		else if (action === 'end') this.end();
+		else if (action === 'hide') this.hide();
+		else if (action === 'reveal') void this.reveal();
+		else this.slideshow?.setFullScreen(!this.slideshow.isFullScreen());
+	};
+	private slideshowWindow: Window | null = null;
 	private readonly screenRemoved = () => this.lostScreen();
 	private readonly screenAdded = () => void this.foundScreen();
 
-	/** The window with the slides, and the pane with the notes. Fixed from here on: editing the note changes nothing on the screen. */
+	/** The window with the slides, and the pane with the notes. Editing the note changes nothing on the screen, unless you blank it first. */
 	constructor(
 		private readonly app: App,
-		readonly slides: Slide[],
+		public slides: Slide[],
 		readonly source: string,
+		private readonly render: () => Promise<Slide[] | null>,
 		private readonly places: Places | null,
 		private readonly screen: Screen | null,
 		private readonly finished: () => void,
 	) {
-		// With the app's own scope behind it, so your other hotkeys still work.
-		// These keys are the slideshow's while it runs, wherever the cursor is: a
-		// clicker that types into a note is the worst thing that can happen here.
-		this.scope = new Scope(app.scope);
-		const on = (keys: string[], run: () => void) => {
-			for (const key of keys) {
-				this.scope.register([], key, () => {
-					run();
-					return false;
-				});
-			}
-		};
-		on(NEXT, () => this.move(1));
-		on(PREVIOUS, () => this.move(-1));
-		on(['Escape'], () => this.end());
-		// Some clickers have a button for this, which sends one of these.
-		on(['b', 'B', '.'], () => this.toggleBlank());
-		on(['f', 'F'], () => this.slideshow?.setFullScreen(!this.slideshow.isFullScreen()));
-		app.keymap.pushScope(this.scope);
+		window.addEventListener('keydown', this.onKey, true);
 		// A lock screen doesn't come up in front of the audience during a long answer.
 		this.blocker = remote.powerSaveBlocker.start('prevent-display-sleep');
 		remote.screen.on('display-removed', this.screenRemoved);
@@ -97,6 +103,8 @@ export class Presentation {
 		const slideshow = this.app.workspace.openPopoutLeaf();
 		this.leaves.push(slideshow);
 		await slideshow.setViewState({ type: SLIDESHOW_VIEW, active: false });
+		this.slideshowWindow = slideshow.getContainer().win;
+		this.slideshowWindow.addEventListener('keydown', this.onKey, true);
 		this.slideshow = remote.BrowserWindow.getAllWindows().find((window) => !before.includes(window.id)) ?? null;
 
 		// Beside the most recent note in the main window, wherever you pressed Present.
@@ -189,15 +197,70 @@ export class Presentation {
 	}
 
 	move(step: number): void {
-		const next = stepped({ index: this.index, blank: this.blank }, step, this.slides.length);
-		if (next.index === this.index && next.blank === this.blank) return;
-		this.index = next.index;
-		this.blank = next.blank;
+		// Off a blank screen it only brings the same slide back, so the audience never misses one.
+		if (this.blank) {
+			void this.reveal();
+			return;
+		}
+		const index = moved(this.index, step, this.slides.length);
+		if (index === this.index) return;
+		this.index = index;
 		this.changed();
 	}
 
 	toggleBlank(): void {
-		this.blank = !this.blank;
+		if (this.blank) void this.reveal();
+		else this.hide();
+	}
+
+	/** Nothing for the room, and the note is yours to edit: what you change shows in your pane. */
+	private hide(): void {
+		this.blank = true;
+		const edited = () => {
+			window.clearTimeout(this.settling);
+			this.settling = window.setTimeout(() => void this.refresh(), SETTLE);
+		};
+		this.edits = [
+			this.app.workspace.on('editor-change', (_editor, info) => {
+				if (info.file?.path === this.source) edited();
+			}),
+			this.app.vault.on('modify', (file) => {
+				if (file.path === this.source) edited();
+			}),
+		];
+		this.changed();
+	}
+
+	/** The slides back, with your last changes in them: the screen stays blank until they're ready. */
+	private async reveal(): Promise<void> {
+		if (!this.blank) return;
+		this.stopWatching();
+		await this.refresh();
+		if (this.ended || !this.blank) return;
+		this.blank = false;
+		this.changed();
+	}
+
+	private stopWatching(): void {
+		window.clearTimeout(this.settling);
+		for (const edit of this.edits) this.app.workspace.offref(edit);
+		this.edits = [];
+	}
+
+	/** The note as slides again. A mistake halfway through a line keeps the last ones that worked, and says so. */
+	private async refresh(): Promise<void> {
+		const mine = ++this.latest;
+		try {
+			const slides = await this.render();
+			if (mine !== this.latest || this.ended || slides === null) return;
+			this.slides = slides;
+			this.index = Math.min(this.index, slides.length - 1);
+			this.message = '';
+		} catch (error) {
+			if (mine !== this.latest || this.ended) return;
+			console.error(error);
+			this.message = `Your last change didn't work, so the slides stay as they were. (${error instanceof Error ? error.message : String(error)})`;
+		}
 		this.changed();
 	}
 
@@ -211,7 +274,9 @@ export class Presentation {
 	end(): void {
 		if (this.ended) return;
 		this.ended = true;
-		this.app.keymap.popScope(this.scope);
+		this.stopWatching();
+		window.removeEventListener('keydown', this.onKey, true);
+		this.slideshowWindow?.removeEventListener('keydown', this.onKey, true);
 		remote.powerSaveBlocker.stop(this.blocker);
 		remote.screen.removeListener('display-removed', this.screenRemoved);
 		remote.screen.removeListener('display-added', this.screenAdded);

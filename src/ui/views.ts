@@ -1,7 +1,7 @@
 // The two sides of a talk: the slides for the room, the notes for you.
 import { Component, ItemView, MarkdownRenderer, setIcon, type WorkspaceLeaf } from 'obsidian';
 import type { Presentation } from '../commands/presentation';
-import { clock, tooLongMessage } from '../core/talk';
+import { clock, tooLongMessage, type Slide } from '../core/talk';
 import { createStage, fitStage, showOnStage, slidesTooLong } from './stage';
 
 export const SLIDESHOW_VIEW = 'take-the-floor-slideshow';
@@ -13,6 +13,8 @@ type Current = () => Presentation | null;
 export class SlideshowView extends ItemView {
 	private room: HTMLElement | null = null;
 	private stage: HTMLElement | null = null;
+	/** The slides last measured for fit: they change while the screen is blank. */
+	private measured: Slide[] | null = null;
 	private stop: (() => void) | null = null;
 
 	constructor(
@@ -45,8 +47,16 @@ export class SlideshowView extends ItemView {
 		this.stop = talk.listen(show);
 		show();
 		this.onResize();
-		// Measured here, in the window that shows them, so with its fonts and sizes.
-		talk.tooLong(await slidesTooLong(this.room, talk.slides));
+		await this.measure(talk);
+	}
+
+	/** Here, in the window that shows them, so with its fonts and sizes. */
+	private async measure(talk: Presentation): Promise<void> {
+		if (!this.room || this.measured === talk.slides) return;
+		const slides = talk.slides;
+		this.measured = slides;
+		const numbers = await slidesTooLong(this.room, slides);
+		if (talk.slides === slides) talk.tooLong(numbers);
 	}
 
 	private show(talk: Presentation): void {
@@ -54,6 +64,7 @@ export class SlideshowView extends ItemView {
 		if (!this.room || !this.stage || !slide) return;
 		this.room.toggleClass('take-the-floor-blank', talk.blank);
 		showOnStage(this.stage, talk.blank ? null : slide.html);
+		void this.measure(talk);
 	}
 
 	onResize(): void {
@@ -113,7 +124,7 @@ export class NotesView extends ItemView {
 		};
 		button('Previous slide', 'arrow-left', () => talk.move(-1));
 		button('Next slide', 'arrow-right', () => talk.move(1));
-		button('Blank the screen', 'eye-off', () => talk.toggleBlank());
+		button('Hide or show the slides', 'eye-off', () => talk.toggleBlank());
 		button('End presentation', 'square', () => talk.end());
 		this.message = this.contentEl.createDiv({ cls: 'take-the-floor-notes-message' });
 		this.warning = this.contentEl.createDiv({ cls: 'take-the-floor-notes-message' });
@@ -158,8 +169,9 @@ export class NotesView extends ItemView {
 		this.warning?.toggle(warning !== '');
 
 		const following = talk.slides[talk.index + 1];
-		showOnStage(this.now.stage, talk.blank ? null : slide.html);
-		this.now.frame.toggleClass('take-the-floor-blank', talk.blank);
+		// Still here while the room sees nothing, to watch your changes on.
+		showOnStage(this.now.stage, slide.html);
+		this.now.caption.setText(talk.blank ? 'Hidden, so you can edit it. Press Esc to show it.' : 'On the screen');
 		showOnStage(this.next.stage, following?.html ?? null);
 		this.next.frame.toggleClass('take-the-floor-frame-end', following === undefined);
 		this.next.caption.setText(following === undefined ? 'That was the last slide' : 'Next');
