@@ -50,7 +50,8 @@ export class Presentation {
 	/** What you need to know during the talk, in the notes pane: a notice can land in the slideshow's window, behind the slides and in front of nobody. */
 	message = '';
 	private readonly listeners = new Set<() => void>();
-	private edits: EventRef[] = [];
+	private editorChange: EventRef | null = null;
+	private fileChange: EventRef | null = null;
 	private settling = 0;
 	/** The newest render wins: a slower one that started earlier is dropped. */
 	private latest = 0;
@@ -61,11 +62,23 @@ export class Presentation {
 	/**
 	 * Before anything else sees the key, with the capture flag. A Scope can't do this:
 	 * an editor that takes the focus puts its own on top, and the keys go into the note.
-	 * A dialog you opened keeps its keys.
+	 * A dialog or menu you opened keeps its keys, wherever its focus is.
 	 */
 	private readonly onKey = (event: KeyboardEvent) => {
 		if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
-		if (event.target instanceof Element && event.target.closest('.modal-container')) return;
+		// Obsidian's own handler comes first: it may just have closed a dialog with this key.
+		if (event.defaultPrevented) return;
+		// In either window: one opens in whichever was active.
+		if ([document, this.slideshowWindow?.document].some((doc) => doc?.querySelector('.modal-container, .menu'))) return;
+		// A key held down does one thing. So holding Esc can't reveal and then end, and
+		// holding B doesn't go on to type into the note it just released.
+		if (event.repeat) {
+			if (keyAction(event.key, false) !== null && (!this.blank || keyAction(event.key, false) === 'hide' || keyAction(event.key, true) !== null)) {
+				event.preventDefault();
+				event.stopPropagation();
+			}
+			return;
+		}
 		const action = keyAction(event.key, this.blank);
 		if (action === null) return;
 		event.preventDefault();
@@ -78,7 +91,10 @@ export class Presentation {
 		else this.slideshow?.setFullScreen(!this.slideshow.isFullScreen());
 	};
 	private slideshowWindow: Window | null = null;
-	private readonly screenRemoved = () => this.lostScreen();
+	/** The screen the slideshow was put on, to tell it from another going away. */
+	private placedOn: Screen | null = null;
+	private revealing = false;
+	private readonly screenRemoved = () => void this.lostScreen();
 	private readonly screenAdded = () => void this.foundScreen();
 
 	/** The window with the slides, and the pane with the notes. Editing the note changes nothing on the screen, unless you blank it first. */
@@ -105,6 +121,7 @@ export class Presentation {
 		await slideshow.setViewState({ type: SLIDESHOW_VIEW, active: false });
 		this.slideshowWindow = slideshow.getContainer().win;
 		this.slideshowWindow.addEventListener('keydown', this.onKey, true);
+		if (this.ended) return;
 		this.slideshow = remote.BrowserWindow.getAllWindows().find((window) => !before.includes(window.id)) ?? null;
 
 		// Beside the most recent note in the main window, wherever you pressed Present.
@@ -144,6 +161,7 @@ export class Presentation {
 		if (!this.slideshow) return;
 		try {
 			await places.place(this.slideshow, screen);
+			this.placedOn = screen;
 			await this.home(places);
 		} catch (error) {
 			console.error(error);
@@ -153,8 +171,11 @@ export class Presentation {
 	}
 
 	/** The cable came out. The window is on this screen now, and filling it would cover your notes. */
-	private lostScreen(): void {
+	private async lostScreen(): Promise<void> {
 		if (!this.slideshow || !this.slideshow.isFullScreen()) return;
+		// Some other screen going is none of the slideshow's business.
+		const places = await placesHere().catch(() => null);
+		if (places && (this.placedOn === null || places.others.some((screen) => screen.id === this.placedOn?.id))) return;
 		this.slideshow.setFullScreen(false);
 		this.say('The other screen is gone, so the slideshow is in a window here, on the same slide. It goes back when the screen does.');
 		this.places?.lost(this.slideshow).catch((error: unknown) => console.error(error));
@@ -167,6 +188,7 @@ export class Presentation {
 	 */
 	private async foundScreen(): Promise<void> {
 		let failure: unknown = null;
+		let tried = false;
 		for (let tries = 0; tries < RETURN_TRIES && !this.ended; tries++) {
 			if (this.slideshow?.isFullScreen()) {
 				this.say('');
@@ -176,7 +198,10 @@ export class Presentation {
 				const places = await placesHere();
 				if (places === null) return;
 				const screen = screenToUse(places.others);
-				if (screen !== null && screen !== 'ask') {
+				// With a choice to make, nobody asked for one in the middle of a talk.
+				if (screen === 'ask') return;
+				if (screen !== null) {
+					tried = true;
 					await this.place(places, screen);
 				}
 				failure = null;
@@ -185,7 +210,7 @@ export class Presentation {
 			}
 			await new Promise((resolve) => window.setTimeout(resolve, RETURN_WAIT));
 		}
-		if (this.ended || this.slideshow?.isFullScreen()) return;
+		if (this.ended || this.slideshow?.isFullScreen() || (!tried && failure === null)) return;
 		console.error(failure);
 		this.say(moveFailed(failure ?? "the screen is there, but it didn't take the window"));
 	}
@@ -220,22 +245,22 @@ export class Presentation {
 			window.clearTimeout(this.settling);
 			this.settling = window.setTimeout(() => void this.refresh(), SETTLE);
 		};
-		this.edits = [
-			this.app.workspace.on('editor-change', (_editor, info) => {
-				if (info.file?.path === this.source) edited();
-			}),
-			this.app.vault.on('modify', (file) => {
-				if (file.path === this.source) edited();
-			}),
-		];
+		this.editorChange = this.app.workspace.on('editor-change', (_editor, info) => {
+			if (info.file?.path === this.source) edited();
+		});
+		this.fileChange = this.app.vault.on('modify', (file) => {
+			if (file.path === this.source) edited();
+		});
 		this.changed();
 	}
 
 	/** The slides back, with your last changes in them: the screen stays blank until they're ready. */
 	private async reveal(): Promise<void> {
-		if (!this.blank) return;
+		if (!this.blank || this.revealing) return;
+		this.revealing = true;
 		this.stopWatching();
 		await this.refresh();
+		this.revealing = false;
 		if (this.ended || !this.blank) return;
 		this.blank = false;
 		this.changed();
@@ -243,8 +268,11 @@ export class Presentation {
 
 	private stopWatching(): void {
 		window.clearTimeout(this.settling);
-		for (const edit of this.edits) this.app.workspace.offref(edit);
-		this.edits = [];
+		// Each from what it was registered on: the wrong one ignores it without a word.
+		if (this.editorChange) this.app.workspace.offref(this.editorChange);
+		if (this.fileChange) this.app.vault.offref(this.fileChange);
+		this.editorChange = null;
+		this.fileChange = null;
 	}
 
 	/** The note as slides again. A mistake halfway through a line keeps the last ones that worked, and says so. */

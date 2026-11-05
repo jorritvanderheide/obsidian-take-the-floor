@@ -33,7 +33,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
 	version: SETTINGS_VERSION,
 	pandocPath: 'pandoc',
-	bibliography: 'Literature/library.bib',
+	bibliography: '',
 	literatureFolder: 'Literature',
 	keyProperty: 'citekey',
 	csl: '',

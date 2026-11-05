@@ -2,7 +2,8 @@
 
 Take the Floor reads a note, has pandoc make slides of it, and shows those in a window of their own,
 with the notes in a pane in the main window. It writes nothing in the vault, and talks to nothing but
-pandoc and, on niri, `niri`, except to download the built-in pandoc, once, when there's none installed.
+pandoc and, on niri, `niri`, except to download the built-in pandoc, once, when there's none installed, and
+to load what a slide has from the web.
 
 ## Layers
 

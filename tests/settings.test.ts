@@ -18,6 +18,10 @@ describe('loadSettings', () => {
 		});
 	});
 
+	it('has no bibliography at first, so a fresh install can present', () => {
+		expect(loadSettings(null).bibliography).toBe('');
+	});
+
 	it('keeps an empty bibliography and style, where empty is an answer', () => {
 		expect(loadSettings({ bibliography: '', csl: '' })).toMatchObject({ bibliography: '', csl: '' });
 	});

@@ -47,7 +47,9 @@ export class SlideshowView extends ItemView {
 		this.stop = talk.listen(show);
 		show();
 		this.onResize();
-		await this.measure(talk);
+		// Not waited for: a slow image from the web mustn't hold back the rest of the talk.
+		void this.measure(talk);
+		await Promise.resolve();
 	}
 
 	/** Here, in the window that shows them, so with its fonts and sizes. */

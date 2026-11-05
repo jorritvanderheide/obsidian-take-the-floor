@@ -8,7 +8,7 @@ The settings shape, defaults and loading are in `src/core/settings.ts`.
 | --- | --- | --- |
 | `version` | `1` | |
 | `pandocPath` | `pandoc` | The default |
-| `bibliography` | `Literature/library.bib` | Present without citations |
+| `bibliography` | `''` | Present without citations |
 | `literatureFolder` | `Literature` | The default |
 | `keyProperty` | `citekey` | The default |
 | `csl` | `''` | Pandoc's default, Chicago author-date |

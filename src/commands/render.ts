@@ -38,6 +38,8 @@ export interface Asks {
 	download: boolean;
 	/** Whether to list citations about to be lost, and to pass on what pandoc says. */
 	missing: boolean;
+	/** The button that goes ahead with lost citations. */
+	anyway?: string;
 }
 
 /**
@@ -91,7 +93,7 @@ export async function renderTalk(context: Context, file: TFile, asks: Asks = { d
 		slides: true,
 	});
 	const lost = missing.papers.length + missing.unresolved.length;
-	if (asks.missing && keys !== null && bibliography && lost > 0 && !(await confirmMissing(context, missing, lost, basename(bibliography)))) return null;
+	if (asks.missing && keys !== null && bibliography && lost > 0 && !(await confirmMissing(context, missing, lost, basename(bibliography), asks.anyway ?? 'Present anyway'))) return null;
 
 	let appConfig: unknown = null;
 	try {
@@ -178,7 +180,7 @@ async function pandocToRun(app: App, setting: string, vault: string, ask: boolea
 	}
 }
 
-function confirmMissing(context: Context, missing: Missing, count: number, bib: string): Promise<boolean> {
+function confirmMissing(context: Context, missing: Missing, count: number, bib: string, anyway: string): Promise<boolean> {
 	const one = (keys: string[]) => keys.length === 1;
 	const list = (el: HTMLElement, keys: string[]) => {
 		const ul = el.createEl('ul');
@@ -211,6 +213,6 @@ function confirmMissing(context: Context, missing: Missing, count: number, bib: 
 				});
 			}
 		},
-		'Present anyway',
+		anyway,
 	);
 }

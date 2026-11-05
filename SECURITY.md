@@ -27,7 +27,8 @@ Take the Floor does only a few things:
 - It runs `niri msg`, only when niri is running, to read your screens, workspaces and the
   titles of your windows, move the slideshow, and give the focus back to Obsidian.
 - It shows slides in a window of Obsidian's, with what's in your note made safe by Obsidian's
-  own HTML sanitizer. An image from the web on a slide is loaded from that site.
+  own HTML sanitizer. An image, video, embedded page or style from the web on a slide is loaded
+  from that site.
 - It reads that note and the citation keys of the notes it links to, your bibliography, your
   citation style, whether strict line breaks are on in your vault's settings, the properties of
   your open notes, and the folders on your PATH, to find pandoc. The settings tab reads the path
@@ -49,14 +50,14 @@ that does one of these is a security problem:
 - keeps or runs a built-in pandoc that doesn't match its hash,
 - gives the built-in pandoc more of your disk than the vault, the folders of the files it's given
   and its temporary folders,
-- or makes Take the Floor connect anywhere other than pandoc's release on GitHub and the address of
-  an image in your own note.
+- or makes Take the Floor connect anywhere other than pandoc's release on GitHub and an address in
+  your own note.
 
 The plugin directory's health report warns that Take the Floor executes programs and uses the
 filesystem directly. Those are pandoc, `niri` and the files above, as
 [section 3 of the README](README.md#3-safety-and-quality) explains.
 
-A site you link an image from can see that a slide loaded it: that's how images on the web work. Problems
+A site you link something from can see that a slide loaded it: that's how the web works. Problems
 in pandoc itself aren't covered: please report those to [pandoc](https://github.com/jgm/pandoc).
 
 A bug that shows the wrong text, or leaves something out, is serious too, but it isn't secret. Please

@@ -18,7 +18,7 @@ export async function exportPdf(context: Context, file: TFile): Promise<void> {
 	const adapter = context.app.vault.adapter;
 	if (!(adapter instanceof FileSystemAdapter)) throw new ExportError('Exporting needs the desktop app.');
 
-	const slides = await renderTalk(context, file);
+	const slides = await renderTalk(context, file, { download: true, missing: true, anyway: 'Export anyway' });
 	if (slides === null) return;
 
 	const answer = await remote.dialog.showSaveDialog({

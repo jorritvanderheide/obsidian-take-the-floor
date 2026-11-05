@@ -89,7 +89,7 @@ they can't end up on a slide or in a PDF. [Section 10](#10-network-and-file-disc
 lists exactly what it reads and writes.
 
 It only connects to the internet to download the built-in pandoc, when you have no
-pandoc installed and say yes, and to show an image from the web if a slide has one.
+pandoc installed and say yes, and to show what a slide has from the web, like an image.
 The programs it starts are an installed pandoc and, when you use the niri window
 manager, `niri`, to put the slides on the other screen.
 
@@ -297,7 +297,7 @@ During a talk:
 
 | Setting | Default | |
 | --- | --- | --- |
-| **Bibliography** | `Literature/library.bib` | The .bib file that Better BibTeX's auto-export keeps up to date. A link to one of its keys, like `[[marsh2024]]`, shows as a citation on your slide, and any other link as its text. The file can be in your vault, or outside it with a path starting with `/` or `~`. Leave it empty to present without citations. |
+| **Bibliography** | None | The .bib file that Better BibTeX's auto-export keeps up to date. A link to one of its keys, like `[[marsh2024]]`, shows as a citation on your slide, and any other link as its text. The file can be in your vault, or outside it with a path starting with `/` or `~`. Leave it empty to present without citations. |
 | **Papers folder** | `Literature` | The folder with your paper notes. Before you present, Take the Floor lists every link to a paper note whose key isn't in your bibliography, because it would show as plain text. |
 | **Citation key property** | `citekey` | The property that holds a paper note's citation key. A link to a note with one cites that key, whatever the note is called. When Better BibTeX changes a key, your links keep working once the property has the new one. Paper Trail writes `citekey`. |
 | **Citation style** | Chicago author-date | The name of a style Zotero has installed, such as `apa` or `ieee`, or the path to a .csl file. Leave it empty for Chicago author-date. |
@@ -340,10 +340,11 @@ anywhere. It connects to the internet for two things:
   `pandoc-3.13-wasm.zip` from pandoc's release on GitHub. Before keeping it, Take the Floor checks
   that the download is exactly the file it was tested with, by comparing its SHA-256 hash, a
   fingerprint of the file's contents.
-- **An image from the web on a slide:** With `![](https://…/figure.png)` in your note, the slideshow
-  window loads it from that site, as any web page would. That site can see your address. The
-  whole talk's images load when a talk starts, to measure the slides, and when you preview or
-  export. Images in your vault stay on your computer.
+- **Something from the web on a slide:** With `![](https://…/figure.png)` in your note, the slideshow
+  window loads it from that site, as any web page would, and the same goes for a video, an embedded
+  page or a style in HTML you wrote in your note. That site can see your address. A talk's images
+  load when it starts, to measure the slides, and when you preview or export. Images in your vault
+  stay on your computer.
 
 ### 10.1 What it reads
 
@@ -374,8 +375,8 @@ Take the Floor writes nothing in your vault, apart from its settings.
   `~/Library/Caches/obsidian-citation-core` on macOS, and `obsidian-citation-core\Cache` in
   `%LOCALAPPDATA%` on Windows. If you also use Due Credit or In the Open, they use the same file.
   You can delete it. It's downloaded again, if you agree, the next time it's needed.
-- **Temporary files:** Each time it makes slides, the files pandoc needs (its filters and the note's
-  properties) and pandoc's result go in a temporary folder. With the built-in pandoc, the note's text
+- **Temporary files:** Each time it makes slides, the files that come with it (pandoc's filters, a
+  template and a font), the note's properties and pandoc's result go in a temporary folder. With the built-in pandoc, the note's text
   goes in a second one. Both are removed afterwards.
 
 ### 10.3 What it stores
@@ -451,3 +452,5 @@ back, you can do that on Liberapay:
 ## 13 License
 
 Copyright © 2026 Jorrit van der Heide. Licensed under the [EUPL-1.2](LICENSE).
+Open Sans, from [`fonts/`](https://codeberg.org/BW20/obsidian-citation-core/src/branch/main/fonts) in obsidian-citation-core, is under the
+[SIL Open Font License 1.1](https://codeberg.org/BW20/obsidian-citation-core/src/branch/main/fonts/OFL.txt).
