@@ -149,6 +149,7 @@ export class Presentation {
 		if (!this.slideshow || !this.slideshow.isFullScreen()) return;
 		this.slideshow.setFullScreen(false);
 		this.say('The other screen is gone, so the slideshow is in a window here, on the same slide. It goes back when the screen does.');
+		this.places?.lost(this.slideshow).catch((error: unknown) => console.error(error));
 	}
 
 	/**

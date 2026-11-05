@@ -2,7 +2,7 @@
 // itself, or by your own hand. What to do is core/screens.ts's to say.
 import { execFile } from 'child_process';
 import { remote, type BrowserWindow } from 'electron';
-import { otherOutputs, placing, windowTitled, type NiriOutput, type NiriWindow, type NiriWorkspace, type Screen } from '../core/screens';
+import { otherOutputs, placeAbove, placing, windowTitled, type NiriOutput, type NiriWindow, type NiriWorkspace, type Screen } from '../core/screens';
 
 /** How long the compositor has to say it has a window that was just opened. */
 const FIND_TRIES = 30;
@@ -20,6 +20,8 @@ export interface Places {
 	place(slideshow: BrowserWindow, screen: Screen): Promise<void>;
 	/** Give the focus back to Obsidian's main window, for you and the clicker. */
 	home(): Promise<void>;
+	/** Its screen is gone, and with it where the window was. */
+	lost(slideshow: BrowserWindow): Promise<void>;
 }
 
 function niri(...args: string[]): Promise<string> {
@@ -54,6 +56,12 @@ async function niriPlaces(): Promise<Places> {
 			// windows doesn't say which state a window is in.
 			slideshow.setFullScreen(true);
 		},
+		lost: async (slideshow) => {
+			const [now, spaces] = await Promise.all([niriJson<NiriWindow[]>('windows'), niriJson<NiriWorkspace[]>('workspaces')]);
+			const found = windowTitled(now, slideshow.getTitle());
+			const above = placeAbove(spaces, windowTitled(now, main.getTitle()));
+			if (found && above !== null) await niri('action', 'move-window-to-workspace', '--window-id', String(found.id), '--focus', 'false', String(above));
+		},
 		home: async () => {
 			for (let tries = 0; tries < FOCUS_TRIES; tries++) {
 				// Niri can be a moment behind the title of the note you're on.
@@ -83,6 +91,7 @@ function electronPlaces(): Places {
 			main.focus();
 			await Promise.resolve();
 		},
+		lost: () => Promise.resolve(),
 	};
 }
 

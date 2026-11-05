@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { otherOutputs, placing, screenToUse, windowTitled, type NiriOutput, type NiriWindow } from '../src/core/screens';
+import { otherOutputs, placeAbove, placing, screenToUse, windowTitled, type NiriOutput, type NiriWindow } from '../src/core/screens';
 
 const window = (id: number, title: string, focused = false): NiriWindow => ({ id, title, workspace_id: id * 10, is_focused: focused });
 
@@ -39,8 +39,8 @@ describe('otherOutputs', () => {
 	const output = (name: string, model: string): NiriOutput => ({ name, make: 'LG', model });
 	const outputs = { 'eDP-1': output('eDP-1', 'Laptop'), 'HDMI-1': output('HDMI-1', 'Room') };
 	const workspaces = [
-		{ id: 10, output: 'eDP-1' },
-		{ id: 20, output: 'HDMI-1' },
+		{ id: 10, idx: 1, output: 'eDP-1' },
+		{ id: 20, idx: 1, output: 'HDMI-1' },
 	];
 
 	it('leaves out the screen Obsidian is on', () => {
@@ -57,6 +57,25 @@ describe('otherOutputs', () => {
 
 	it('offers every screen when it cannot tell where Obsidian is', () => {
 		expect(otherOutputs(outputs, workspaces, null)).toHaveLength(2);
+	});
+});
+
+describe('placeAbove', () => {
+	const workspaces = [
+		{ id: 10, idx: 1, output: 'eDP-1' },
+		{ id: 20, idx: 2, output: 'eDP-1' },
+	];
+
+	it('is the place above yours', () => {
+		expect(placeAbove(workspaces, window(2, 'Note'))).toBe(1);
+	});
+
+	it('has nowhere to go from the top one', () => {
+		expect(placeAbove(workspaces, window(1, 'Note'))).toBeNull();
+	});
+
+	it('leaves it when it cannot tell where you are', () => {
+		expect(placeAbove(workspaces, null)).toBeNull();
 	});
 });
 

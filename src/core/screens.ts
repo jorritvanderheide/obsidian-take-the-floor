@@ -17,6 +17,8 @@ export interface NiriWindow {
 
 export interface NiriWorkspace {
 	id: number;
+	/** Its place on its screen, from 1. */
+	idx: number;
 	output: string | null;
 }
 
@@ -52,6 +54,16 @@ export function otherOutputs(outputs: Record<string, NiriOutput>, workspaces: Ni
 	return Object.entries(outputs)
 		.filter(([name]) => name !== here)
 		.map(([name, output]) => ({ id: name, label: `${output.make} ${output.model} (${name})` }));
+}
+
+/**
+ * Where the slideshow goes when its screen does: the place of the workspace above
+ * `home`, one step away. Niri would leave it below all the others. Null when `home`
+ * is the top one, or isn't known, which leaves it where niri put it.
+ */
+export function placeAbove(workspaces: NiriWorkspace[], home: NiriWindow | null): number | null {
+	const here = workspaces.find((workspace) => workspace.id === home?.workspace_id);
+	return here && here.idx > 1 ? here.idx - 1 : null;
 }
 
 /** The screen to use without asking, null for none at all, or `ask` when there's a choice to make. */
