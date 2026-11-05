@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fit, looksLikeSlides, moved, withNotes } from '../src/core/talk';
+import { clock, fit, isTooLong, looksLikeSlides, moved, stepped, tooLongMessage, withNotes } from '../src/core/talk';
 
 describe('withNotes', () => {
 	const slide = (html: string, closing = false) => ({ html, closing });
@@ -63,5 +63,51 @@ describe('looksLikeSlides', () => {
 
 	it('says no while Obsidian has not read the note yet', () => {
 		expect(looksLikeSlides(undefined)).toBe(false);
+	});
+});
+
+describe('stepped', () => {
+	it('moves when the screen shows a slide', () => {
+		expect(stepped({ index: 1, blank: false }, 1, 3)).toEqual({ index: 2, blank: false });
+	});
+
+	it('only brings the same slide back off a blank screen, whichever way', () => {
+		expect(stepped({ index: 1, blank: true }, 1, 3)).toEqual({ index: 1, blank: false });
+		expect(stepped({ index: 1, blank: true }, -1, 3)).toEqual({ index: 1, blank: false });
+	});
+});
+
+describe('clock', () => {
+	it.each([
+		[0, '0:00'],
+		[999, '0:00'],
+		[7000, '0:07'],
+		[247000, '4:07'],
+		[3723000, '1:02:03'],
+		[-5000, '0:00'],
+	])('shows %i ms as %s', (ms, shown) => {
+		expect(clock(ms)).toBe(shown);
+	});
+});
+
+describe('isTooLong', () => {
+	it('leaves a pixel for rounding', () => {
+		expect(isTooLong(1081, 1080)).toBe(false);
+		expect(isTooLong(1082, 1080)).toBe(true);
+	});
+});
+
+describe('tooLongMessage', () => {
+	it('says nothing when they all fit', () => {
+		expect(tooLongMessage([])).toBe('');
+	});
+
+	it('names one', () => {
+		expect(tooLongMessage([3])).toBe('Slide 3 is too long, so its end is cut off.');
+	});
+
+	it('names several', () => {
+		expect(tooLongMessage([3, 7])).toBe('Slides 3 and 7 are too long, so their ends are cut off.');
+		expect(tooLongMessage([1, 3, 7])).toBe('Slides 1, 3 and 7 are too long, so their ends are cut off.');
 	});
 });

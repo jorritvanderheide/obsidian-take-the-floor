@@ -1,13 +1,11 @@
 // The two sides of a talk: the slides for the room, the notes for you.
-import { Component, ItemView, MarkdownRenderer, sanitizeHTMLToDom, setIcon, type WorkspaceLeaf } from 'obsidian';
+import { Component, ItemView, MarkdownRenderer, setIcon, type WorkspaceLeaf } from 'obsidian';
 import type { Presentation } from '../commands/presentation';
-import { fit } from '../core/talk';
+import { clock, tooLongMessage } from '../core/talk';
+import { createStage, fitStage, showOnStage, slidesTooLong } from './stage';
 
 export const SLIDESHOW_VIEW = 'take-the-floor-slideshow';
 export const NOTES_VIEW = 'take-the-floor-notes';
-
-/** The size slides are laid out at, scaled to whatever screen shows them, so a slide looks the same on every one. */
-const STAGE = { width: 1920, height: 1080 };
 
 /** The talk in progress, or null when there is none: a window Obsidian restored from a talk that's over. */
 type Current = () => Presentation | null;
@@ -42,26 +40,24 @@ export class SlideshowView extends ItemView {
 		// On the window's body and not in the view, over everything Obsidian and the
 		// theme draw: a theme's frames and margins are on the containers around a view.
 		this.room = this.leaf.getContainer().win.document.body.createDiv({ cls: 'take-the-floor-room' });
-		this.stage = this.room.createDiv({ cls: 'take-the-floor-stage markdown-rendered' });
-		this.stage.setCssProps({ '--take-the-floor-width': `${STAGE.width}px`, '--take-the-floor-height': `${STAGE.height}px` });
+		this.stage = createStage(this.room);
 		const show = () => this.show(talk);
 		this.stop = talk.listen(show);
 		show();
 		this.onResize();
-		await Promise.resolve();
+		// Measured here, in the window that shows them, so with its fonts and sizes.
+		talk.tooLong(await slidesTooLong(this.room, talk.slides));
 	}
 
 	private show(talk: Presentation): void {
 		const slide = talk.slides[talk.index];
-		if (!this.stage || !slide) return;
-		this.stage.empty();
-		this.stage.append(sanitizeHTMLToDom(slide.html));
+		if (!this.room || !this.stage || !slide) return;
+		this.room.toggleClass('take-the-floor-blank', talk.blank);
+		showOnStage(this.stage, talk.blank ? null : slide.html);
 	}
 
 	onResize(): void {
-		if (!this.room || !this.stage) return;
-		const { scale, left, top } = fit({ width: this.room.clientWidth, height: this.room.clientHeight }, STAGE);
-		this.stage.setCssProps({ '--take-the-floor-scale': String(scale), '--take-the-floor-left': `${left}px`, '--take-the-floor-top': `${top}px` });
+		if (this.room && this.stage) fitStage(this.stage, this.room);
 	}
 
 	async onClose(): Promise<void> {
@@ -74,7 +70,11 @@ export class SlideshowView extends ItemView {
 
 export class NotesView extends ItemView {
 	private heading: HTMLElement | null = null;
+	private timer: HTMLElement | null = null;
 	private message: HTMLElement | null = null;
+	private warning: HTMLElement | null = null;
+	private now: { frame: HTMLElement; stage: HTMLElement; caption: HTMLElement } | null = null;
+	private next: { frame: HTMLElement; stage: HTMLElement; caption: HTMLElement } | null = null;
 	private body: HTMLElement | null = null;
 	private rendered: Component | null = null;
 	private stop: (() => void) | null = null;
@@ -105,6 +105,7 @@ export class NotesView extends ItemView {
 		this.contentEl.addClass('take-the-floor-notes');
 		const bar = this.contentEl.createDiv({ cls: 'take-the-floor-notes-bar' });
 		this.heading = bar.createDiv({ cls: 'take-the-floor-notes-heading' });
+		this.timer = bar.createDiv({ cls: 'take-the-floor-notes-timer' });
 		const button = (label: string, icon: string, run: () => void) => {
 			const el = bar.createEl('button', { attr: { 'aria-label': label } });
 			setIcon(el, icon);
@@ -112,8 +113,21 @@ export class NotesView extends ItemView {
 		};
 		button('Previous slide', 'arrow-left', () => talk.move(-1));
 		button('Next slide', 'arrow-right', () => talk.move(1));
+		button('Blank the screen', 'eye-off', () => talk.toggleBlank());
 		button('End presentation', 'square', () => talk.end());
 		this.message = this.contentEl.createDiv({ cls: 'take-the-floor-notes-message' });
+		this.warning = this.contentEl.createDiv({ cls: 'take-the-floor-notes-message' });
+
+		const frames = this.contentEl.createDiv({ cls: 'take-the-floor-notes-frames' });
+		const frame = (caption: string) => {
+			const box = frames.createDiv({ cls: 'take-the-floor-notes-slide' });
+			const label = box.createDiv({ cls: 'take-the-floor-notes-caption', text: caption });
+			const el = box.createDiv({ cls: 'take-the-floor-frame' });
+			return { frame: el, stage: createStage(el), caption: label };
+		};
+		this.now = frame('On the screen');
+		this.next = frame('Next');
+
 		this.body = this.contentEl.createDiv({ cls: 'take-the-floor-notes-body markdown-rendered' });
 		// A link in your notes opens the note, such as a paper during the questions.
 		this.registerDomEvent(this.body, 'click', (event) => {
@@ -123,17 +137,33 @@ export class NotesView extends ItemView {
 			event.preventDefault();
 			void this.app.workspace.openLinkText(target, talk.source, 'tab');
 		});
+
+		const tick = () => this.timer?.setText(clock(Date.now() - talk.startedAt));
+		tick();
+		this.registerInterval(window.setInterval(tick, 1000));
 		const show = () => void this.show(talk);
 		this.stop = talk.listen(show);
+		this.onResize();
 		await this.show(talk);
 	}
 
 	private async show(talk: Presentation): Promise<void> {
 		const slide = talk.slides[talk.index];
-		if (!this.heading || !this.body || !slide) return;
+		if (!this.heading || !this.body || !this.now || !this.next || !slide) return;
 		this.heading.setText(`Slide ${talk.index + 1} of ${talk.slides.length}`);
 		this.message?.setText(talk.message);
 		this.message?.toggle(talk.message !== '');
+		const warning = tooLongMessage(talk.tooLongSlides);
+		this.warning?.setText(warning);
+		this.warning?.toggle(warning !== '');
+
+		const following = talk.slides[talk.index + 1];
+		showOnStage(this.now.stage, talk.blank ? null : slide.html);
+		this.now.frame.toggleClass('take-the-floor-blank', talk.blank);
+		showOnStage(this.next.stage, following?.html ?? null);
+		this.next.frame.toggleClass('take-the-floor-frame-end', following === undefined);
+		this.next.caption.setText(following === undefined ? 'That was the last slide' : 'Next');
+
 		this.body.empty();
 		if (this.rendered) this.removeChild(this.rendered);
 		this.rendered = this.addChild(new Component());
@@ -142,6 +172,12 @@ export class NotesView extends ItemView {
 			return;
 		}
 		await MarkdownRenderer.render(this.app, slide.notes, this.body, talk.source, this.rendered);
+	}
+
+	onResize(): void {
+		for (const each of [this.now, this.next]) {
+			if (each) fitStage(each.stage, each.frame);
+		}
 	}
 
 	async onClose(): Promise<void> {

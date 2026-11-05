@@ -5,6 +5,7 @@ import { renderTalk } from './commands/render';
 import { loadSettings, type Settings } from './core/settings';
 import { SettingsTab } from './ui/settings-tab';
 import { decorate, undecorate } from './ui/title-bar';
+import { PREVIEW_VIEW, PreviewView } from './ui/preview';
 import { NOTES_VIEW, NotesView, SLIDESHOW_VIEW, SlideshowView } from './ui/views';
 
 export default class TakeTheFloor extends Plugin {
@@ -20,10 +21,11 @@ export default class TakeTheFloor extends Plugin {
 
 		this.registerView(SLIDESHOW_VIEW, (leaf) => new SlideshowView(leaf, () => this.presentation));
 		this.registerView(NOTES_VIEW, (leaf) => new NotesView(leaf, () => this.presentation));
+		this.registerView(PREVIEW_VIEW, (leaf) => new PreviewView(leaf, (file, first) => renderTalk(this, file, { download: first, missing: false })));
 
 		// Obsidian brings a window back on the next launch, and a talk doesn't come back with it.
 		this.app.workspace.onLayoutReady(() => {
-			for (const type of [SLIDESHOW_VIEW, NOTES_VIEW]) {
+			for (const type of [SLIDESHOW_VIEW, NOTES_VIEW, PREVIEW_VIEW]) {
 				for (const leaf of this.app.workspace.getLeavesOfType(type)) leaf.detach();
 			}
 		});
@@ -48,8 +50,19 @@ export default class TakeTheFloor extends Plugin {
 					return true;
 				},
 			});
+		this.addCommand({
+			id: 'preview',
+			name: 'Preview slides',
+			checkCallback: (checking) => {
+				const file = this.app.workspace.getActiveFile();
+				if (file?.extension !== 'md') return false;
+				if (!checking) this.attempt(this.preview(file));
+				return true;
+			},
+		});
 		during('next-slide', 'Next slide', (talk) => talk.move(1));
 		during('previous-slide', 'Previous slide', (talk) => talk.move(-1));
+		during('blank', 'Blank the screen', (talk) => talk.toggleBlank());
 		during('end', 'End presentation', (talk) => talk.end());
 
 		this.addRibbonIcon('presentation', 'Present', () => {
@@ -102,6 +115,14 @@ export default class TakeTheFloor extends Plugin {
 		20,
 		true,
 	);
+
+	/** The tab with a note's slides, beside the note, the same tab if it's open already. */
+	private async preview(file: TFile): Promise<void> {
+		const leaf = this.app.workspace.getLeavesOfType(PREVIEW_VIEW)[0] ?? this.app.workspace.getLeaf('split', 'vertical');
+		await leaf.setViewState({ type: PREVIEW_VIEW, active: false });
+		await this.app.workspace.revealLeaf(leaf);
+		if (leaf.view instanceof PreviewView) await leaf.view.showNote(file);
+	}
 
 	private present(file: TFile) {
 		if (this.starting || this.presentation !== null) return;

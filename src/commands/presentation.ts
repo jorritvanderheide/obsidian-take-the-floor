@@ -2,7 +2,7 @@
 import { remote, type BrowserWindow } from 'electron';
 import { Notice, Scope, type App, type WorkspaceLeaf } from 'obsidian';
 import { screenToUse, type Screen } from '../core/screens';
-import { moved, type Slide } from '../core/talk';
+import { stepped, type Slide } from '../core/talk';
 import { pickScreen } from '../ui/screen-picker';
 import { NOTES_VIEW, SLIDESHOW_VIEW } from '../ui/views';
 import { placesHere, type Places } from './placement';
@@ -41,6 +41,12 @@ const moveFailed = (error: unknown) =>
 
 export class Presentation {
 	index = 0;
+	/** Whether the screen shows nothing for now. */
+	blank = false;
+	/** When the clock started. */
+	readonly startedAt = Date.now();
+	/** The numbers of the slides that don't fit, once they've been measured. */
+	tooLongSlides: number[] = [];
 	/** What you need to know during the talk, in the notes pane: a notice can land in the slideshow's window, behind the slides and in front of nobody. */
 	message = '';
 	private readonly listeners = new Set<() => void>();
@@ -76,6 +82,8 @@ export class Presentation {
 		on(NEXT, () => this.move(1));
 		on(PREVIOUS, () => this.move(-1));
 		on(['Escape'], () => this.end());
+		// Some clickers have a button for this, which sends one of these.
+		on(['b', 'B', '.'], () => this.toggleBlank());
 		on(['f', 'F'], () => this.slideshow?.setFullScreen(!this.slideshow.isFullScreen()));
 		app.keymap.pushScope(this.scope);
 		// A lock screen doesn't come up in front of the audience during a long answer.
@@ -181,9 +189,21 @@ export class Presentation {
 	}
 
 	move(step: number): void {
-		const index = moved(this.index, step, this.slides.length);
-		if (index === this.index) return;
-		this.index = index;
+		const next = stepped({ index: this.index, blank: this.blank }, step, this.slides.length);
+		if (next.index === this.index && next.blank === this.blank) return;
+		this.index = next.index;
+		this.blank = next.blank;
+		this.changed();
+	}
+
+	toggleBlank(): void {
+		this.blank = !this.blank;
+		this.changed();
+	}
+
+	/** What measuring the slides found. */
+	tooLong(numbers: number[]): void {
+		this.tooLongSlides = numbers;
 		this.changed();
 	}
 

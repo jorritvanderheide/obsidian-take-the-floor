@@ -39,3 +39,37 @@ export function fit(room: { width: number; height: number }, slide: { width: num
 export function looksLikeSlides(sections: { type: string }[] | undefined): boolean {
 	return sections?.some((section) => section.type === 'thematicBreak') ?? false;
 }
+
+/** Where a talk is. */
+export interface Position {
+	index: number;
+	/** Whether the screen shows nothing for now. */
+	blank: boolean;
+}
+
+/** A step from here. Off a blank screen it only brings the same slide back, so the audience never misses one. */
+export function stepped(position: Position, step: number, count: number): Position {
+	return position.blank ? { index: position.index, blank: false } : { index: moved(position.index, step, count), blank: false };
+}
+
+/** Time passed, as a clock shows it: `4:07`, and `1:02:03` past the hour. */
+export function clock(ms: number): string {
+	const seconds = Math.max(0, Math.floor(ms / 1000));
+	const two = (value: number) => String(value).padStart(2, '0');
+	const minutes = Math.floor(seconds / 60);
+	if (minutes < 60) return `${minutes}:${two(seconds % 60)}`;
+	return `${Math.floor(minutes / 60)}:${two(minutes % 60)}:${two(seconds % 60)}`;
+}
+
+/** Whether what's on a slide is taller than the slide, with a pixel to spare for rounding. */
+export function isTooLong(content: number, room: number): boolean {
+	return content > room + 1;
+}
+
+/** What to say about the slides that don't fit, by their numbers from 1, or nothing when they all do. */
+export function tooLongMessage(numbers: number[]): string {
+	const [only] = numbers;
+	if (only === undefined) return '';
+	if (numbers.length === 1) return `Slide ${only} is too long, so its end is cut off.`;
+	return `Slides ${numbers.slice(0, -1).join(', ')} and ${numbers[numbers.length - 1]} are too long, so their ends are cut off.`;
+}

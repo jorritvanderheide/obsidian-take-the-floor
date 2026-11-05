@@ -17,4 +17,9 @@ What changed in each release of Take the Floor, newest first.
 - While you present, the page and arrow keys and the space bar change slides,
   wherever your cursor is, Escape ends the talk, and your computer won't lock or
   go to sleep.
+- The notes pane shows the slide on the screen, the next one and a timer, and says
+  when a slide is too long to fit. B or the full stop blanks the screen, and the next
+  key brings the same slide back.
+- **Preview slides** opens a tab with every slide of a note, which updates as you
+  save, and marks any that are too long.
 - The slides follow your Obsidian theme and CSS snippets.

@@ -32,11 +32,19 @@ import type { Context } from '../context';
 /** Where pandoc's path is set, for the core's message when pandoc isn't there. */
 const SETTINGS = 'Settings → Take the Floor';
 
+/** What rendering may stop and ask you. A preview that updates as you type asks nothing. */
+export interface Asks {
+	/** Whether to offer the built-in pandoc when there's none. */
+	download: boolean;
+	/** Whether to list citations about to be lost, and to pass on what pandoc says. */
+	missing: boolean;
+}
+
 /**
  * The slides of a note, or null when you decided against it. Everything that
  * can go wrong goes wrong here, before a window opens in front of anybody.
  */
-export async function renderTalk(context: Context, file: TFile): Promise<Slide[] | null> {
+export async function renderTalk(context: Context, file: TFile, asks: Asks = { download: true, missing: true }): Promise<Slide[] | null> {
 	const { app, settings } = context;
 	const adapter = app.vault.adapter;
 	if (!(adapter instanceof FileSystemAdapter)) throw new ExportError('Presenting needs the desktop app.');
@@ -48,10 +56,10 @@ export async function renderTalk(context: Context, file: TFile): Promise<Slide[]
 	const csl = settings.csl ? stylePath(settings.csl, home) : null;
 	if (csl && !existsSync(csl)) throw new ExportError(missingStyle(csl));
 
-	const pandoc = await pandocToRun(app, settings.pandocPath, vault);
+	const pandoc = await pandocToRun(app, settings.pandocPath, vault, asks.download);
 	if (pandoc === null) return null;
 	// Once a session, for a pandoc that turns some citations into text.
-	if (pandoc.notice) new Notice(pandoc.notice, 0);
+	if (pandoc.notice && asks.missing) new Notice(pandoc.notice, 0);
 
 	// The editor rather than the file when the note is open, since the file can
 	// be a couple of seconds behind what you just typed.
@@ -83,7 +91,7 @@ export async function renderTalk(context: Context, file: TFile): Promise<Slide[]
 		slides: true,
 	});
 	const lost = missing.papers.length + missing.unresolved.length;
-	if (keys !== null && bibliography && lost > 0 && !(await confirmMissing(context, missing, lost, basename(bibliography)))) return null;
+	if (asks.missing && keys !== null && bibliography && lost > 0 && !(await confirmMissing(context, missing, lost, basename(bibliography)))) return null;
 
 	let appConfig: unknown = null;
 	try {
@@ -92,7 +100,7 @@ export async function renderTalk(context: Context, file: TFile): Promise<Slide[]
 		// No app.json, or one that does not parse: Obsidian's defaults.
 	}
 
-	const progress = new Notice('Getting your slides ready…', 0);
+	const progress = asks.missing ? new Notice('Getting your slides ready…', 0) : null;
 	let warnings: string;
 	let html: string;
 	try {
@@ -116,9 +124,9 @@ export async function renderTalk(context: Context, file: TFile): Promise<Slide[]
 			return [said, await readFile(files.slideshow, 'utf8')] as const;
 		});
 	} finally {
-		progress.hide();
+		progress?.hide();
 	}
-	if (warnings) new Notice(warnings, 10000);
+	if (warnings && asks.missing) new Notice(warnings, 10000);
 
 	const page = new DOMParser().parseFromString(html, 'text/html');
 	const made = Array.from(page.querySelectorAll('.slide')).map((slide) => ({ html: slide.outerHTML, closing: slide.classList.contains('references') }));
@@ -134,7 +142,7 @@ export async function renderTalk(context: Context, file: TFile): Promise<Slide[]
  * built-in one, which is asked about and downloaded the first time; null when
  * that's declined.
  */
-async function pandocToRun(app: App, setting: string, vault: string): Promise<Pandoc | null> {
+async function pandocToRun(app: App, setting: string, vault: string, ask: boolean): Promise<Pandoc | null> {
 	let downloading: Notice | null = null;
 	try {
 		return await pandocFor(
@@ -142,6 +150,7 @@ async function pandocToRun(app: App, setting: string, vault: string): Promise<Pa
 			vault,
 			SETTINGS,
 			async () => {
+				if (!ask) return false;
 				const yes = await confirm(
 					app,
 					'Download pandoc?',

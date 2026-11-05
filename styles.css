@@ -65,9 +65,38 @@
 	margin-bottom: 0.5em;
 }
 
+/* A slide shown small. */
+.take-the-floor-frame {
+	position: relative;
+	aspect-ratio: 16 / 9;
+	overflow: hidden;
+	background: var(--background-primary);
+	border: var(--border-width) solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+}
+
+.take-the-floor-frame-end {
+	background: var(--background-secondary);
+}
+
+.take-the-floor-frame-too-long {
+	border-color: var(--text-error);
+}
+
+.take-the-floor-room.take-the-floor-blank,
+.take-the-floor-frame.take-the-floor-blank {
+	background: #000;
+}
+
+.take-the-floor-measure {
+	visibility: hidden;
+	pointer-events: none;
+}
+
 /* The pane with your notes. */
 .take-the-floor-notes-bar {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--size-4-2);
 	margin-bottom: var(--size-4-4);
@@ -75,7 +104,38 @@
 
 .take-the-floor-notes-heading {
 	margin-right: auto;
+	white-space: nowrap;
 	color: var(--text-muted);
+}
+
+.take-the-floor-notes-timer {
+	font-variant-numeric: tabular-nums;
+	font-size: 1.2em;
+}
+
+.take-the-floor-notes-frames {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-3);
+	margin-bottom: var(--size-4-4);
+}
+
+/* Side by side where there's room, and above each other in a narrow pane. */
+.take-the-floor-notes-slide {
+	flex: 1 1 240px;
+	min-width: 0;
+}
+
+.take-the-floor-notes-caption {
+	margin-bottom: var(--size-4-1);
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+.take-the-floor-preview-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-4);
 }
 
 .take-the-floor-notes-message {
