@@ -9,6 +9,9 @@ import { placesHere, type Places } from './placement';
 
 const NEXT = ['PageDown', 'ArrowRight', 'ArrowDown', ' '];
 const PREVIOUS = ['PageUp', 'ArrowLeft', 'ArrowUp'];
+/** How long a screen that came back gets to settle: ten seconds, in steps. */
+const RETURN_TRIES = 20;
+const RETURN_WAIT = 500;
 
 /**
  * Where the slideshow goes, asked before anything opens: the places, the screen,
@@ -125,11 +128,12 @@ export class Presentation {
 		if (!this.slideshow) return;
 		try {
 			await places.place(this.slideshow, screen);
+			await this.home(places);
 		} catch (error) {
 			console.error(error);
 			this.say(moveFailed(error));
+			await this.home(places);
 		}
-		await this.home(places);
 	}
 
 	/** The cable came out. The window is on this screen now, and filling it would cover your notes. */
@@ -139,21 +143,35 @@ export class Presentation {
 		this.say('The other screen is gone, so the slideshow is in a window here, on the same slide. It goes back when the screen does.');
 	}
 
-	/** And back in. */
+	/**
+	 * And back in. A cable takes a while to settle: the screen can be announced
+	 * before niri can use it, and niri moves the window back by itself on its own
+	 * time. So this keeps trying until the slideshow fills that screen.
+	 */
 	private async foundScreen(): Promise<void> {
-		if (this.screen === null || this.slideshow?.isFullScreen()) return;
-		try {
-			const places = await placesHere();
-			if (places === null) return;
-			const screen = screenToUse(places.others);
-			if (screen !== null && screen !== 'ask') {
+		if (this.screen === null) return;
+		let failure: unknown = null;
+		for (let tries = 0; tries < RETURN_TRIES && !this.ended; tries++) {
+			if (this.slideshow?.isFullScreen()) {
 				this.say('');
-				await this.place(places, screen);
+				return;
 			}
-		} catch (error) {
-			console.error(error);
-			this.say(moveFailed(error));
+			try {
+				const places = await placesHere();
+				if (places === null) return;
+				const screen = screenToUse(places.others);
+				if (screen !== null && screen !== 'ask') {
+					await this.place(places, screen);
+				}
+				failure = null;
+			} catch (error) {
+				failure = error;
+			}
+			await new Promise((resolve) => window.setTimeout(resolve, RETURN_WAIT));
 		}
+		if (this.ended || this.slideshow?.isFullScreen()) return;
+		console.error(failure);
+		this.say(moveFailed(failure ?? "the screen is there, but it didn't take the window"));
 	}
 
 	/** Called with every move, until the view that asked closes. */
