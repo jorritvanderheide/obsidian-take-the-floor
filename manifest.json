@@ -1,7 +1,7 @@
 {
 	"id": "take-the-floor",
 	"name": "Take the Floor",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"minAppVersion": "1.13.0",
 	"description": "Present a note as slides, with its links turned into real citations and your speaker notes on your own screen.",
 	"author": "Jorrit van der Heide",

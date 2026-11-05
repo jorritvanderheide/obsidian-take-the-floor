@@ -2,7 +2,7 @@
 
 What changed in each release of Take the Floor, newest first.
 
-## Unreleased
+## 0.1.0
 
 - **Present** shows a note as slides in a window of its own, with `---` between
   slides, and your speaker notes in a pane in Obsidian. Notes are your
