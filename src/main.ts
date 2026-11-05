@@ -1,4 +1,4 @@
-import { debounce, Notice, Plugin, TFile } from 'obsidian';
+import { Notice, Plugin, TFile } from 'obsidian';
 import { ExportError } from 'obsidian-citation-core';
 import { chooseScreen, Presentation } from './commands/presentation';
 import { renderTalk } from './commands/render';
@@ -14,6 +14,7 @@ export default class TakeTheFloor extends Plugin {
 	/** While a note is on its way to pandoc, so a second press doesn't start a second talk. */
 	private starting = false;
 	private unloaded = false;
+	private decorating = 0;
 
 	async onload() {
 		this.settings = loadSettings(await this.loadData());
@@ -106,15 +107,15 @@ export default class TakeTheFloor extends Plugin {
 	/**
 	 * Deferred, because `layout-change` fires before a view rebuilds its
 	 * actions, and coalesced, because opening a note fires several events in a
-	 * row.
+	 * row. On this window's own timer: Obsidian's `debounce` was seen to stop
+	 * for good when a talk ended, which closes the window that was active.
 	 */
-	private readonly decorate = debounce(
-		() => {
+	private decorate(): void {
+		window.clearTimeout(this.decorating);
+		this.decorating = window.setTimeout(() => {
 			if (!this.unloaded) decorate(this.app, (file) => this.present(file), this.presentation !== null);
-		},
-		20,
-		true,
-	);
+		}, 20);
+	}
 
 	/** The tab with a note's slides, beside the note, the same tab if it's open already. */
 	private async preview(file: TFile): Promise<void> {

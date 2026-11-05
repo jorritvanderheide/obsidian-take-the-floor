@@ -1,5 +1,5 @@
 // A tab with every slide of a note, as you write it.
-import { debounce, ItemView, TFile, type WorkspaceLeaf } from 'obsidian';
+import { ItemView, TFile, type WorkspaceLeaf } from 'obsidian';
 import { tooLongMessage, type Slide } from '../core/talk';
 import { createStage, fitStage, showOnStage, stageTooLong } from './stage';
 
@@ -18,7 +18,7 @@ export class PreviewView extends ItemView {
 	private frames: { frame: HTMLElement; stage: HTMLElement }[] = [];
 	/** The newest render wins: a slower one that started earlier is dropped. */
 	private latest = 0;
-	private readonly later = debounce(() => void this.refresh(false), SETTLE, true);
+	private waiting = 0;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -47,7 +47,10 @@ export class PreviewView extends ItemView {
 		this.list = this.contentEl.createDiv({ cls: 'take-the-floor-preview-list' });
 		this.registerEvent(
 			this.app.vault.on('modify', (file) => {
-				if (file === this.file) this.later();
+				if (file !== this.file) return;
+				// On the main window's timer, which a talk ending can't take away.
+				window.clearTimeout(this.waiting);
+				this.waiting = window.setTimeout(() => void this.refresh(false), SETTLE);
 			}),
 		);
 		await Promise.resolve();
@@ -100,5 +103,10 @@ export class PreviewView extends ItemView {
 
 	onResize(): void {
 		for (const { frame, stage } of this.frames) fitStage(stage, frame);
+	}
+
+	async onClose(): Promise<void> {
+		window.clearTimeout(this.waiting);
+		await Promise.resolve();
 	}
 }
