@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clock, fit, isTooLong, looksLikeSlides, moved, stepped, tooLongMessage, withNotes } from '../src/core/talk';
+import { clock, fit, isPresentation, isTooLong, moved, stepped, tooLongMessage, withNotes } from '../src/core/talk';
 
 describe('withNotes', () => {
 	const slide = (html: string, closing = false) => ({ html, closing });
@@ -52,17 +52,19 @@ describe('fit', () => {
 	});
 });
 
-describe('looksLikeSlides', () => {
-	it('says yes to a note with a rule', () => {
-		expect(looksLikeSlides([{ type: 'yaml' }, { type: 'heading' }, { type: 'thematicBreak' }, { type: 'paragraph' }])).toBe(true);
+describe('isPresentation', () => {
+	it('says yes to a note with the property on', () => {
+		expect(isPresentation({ presentation: true, tags: ['type/record'] })).toBe(true);
 	});
 
-	it('says no to one without, its properties included', () => {
-		expect(looksLikeSlides([{ type: 'yaml' }, { type: 'heading' }, { type: 'paragraph' }])).toBe(false);
+	it('says no to one with it off, or anything else in it', () => {
+		expect(isPresentation({ presentation: false })).toBe(false);
+		expect(isPresentation({ presentation: 'yes' })).toBe(false);
 	});
 
-	it('says no while Obsidian has not read the note yet', () => {
-		expect(looksLikeSlides(undefined)).toBe(false);
+	it('says no to one without, and while Obsidian has not read the note yet', () => {
+		expect(isPresentation({ tags: [] })).toBe(false);
+		expect(isPresentation(undefined)).toBe(false);
 	});
 });
 

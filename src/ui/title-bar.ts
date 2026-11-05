@@ -1,8 +1,8 @@
-// A Present button in the title bar of a note that looks like slides.
+// A Present button in the title bar of a note that's a presentation.
 //
-// Wiring only: what looks like slides is core/talk.ts's to say.
+// Wiring only: what makes one is core/talk.ts's to say.
 import { MarkdownView, setIcon, type App, type TFile } from 'obsidian';
-import { looksLikeSlides } from '../core/talk';
+import { isPresentation } from '../core/talk';
 
 const BUTTON = 'take-the-floor-present';
 
@@ -29,7 +29,7 @@ export function decorate(app: App, present: (file: TFile) => void, presenting: b
 			button.createSpan({ text: 'Present' });
 		}
 		const file = view.file;
-		button.toggle(!presenting && file !== null && looksLikeSlides(app.metadataCache.getFileCache(file)?.sections));
+		button.toggle(!presenting && file !== null && isPresentation(app.metadataCache.getFileCache(file)?.frontmatter));
 	}
 }
 

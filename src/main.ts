@@ -84,8 +84,8 @@ export default class TakeTheFloor extends Plugin {
 		);
 
 		// The title bar follows the note: a view rebuilds its actions when it
-		// switches between editing and reading, and a note's rules are in what the
-		// metadata cache says.
+		// switches between editing and reading, and a note's properties are in what
+		// the metadata cache says.
 		this.registerEvent(this.app.workspace.on('layout-change', () => this.decorate()));
 		this.registerEvent(this.app.workspace.on('active-leaf-change', () => this.decorate()));
 		this.registerEvent(this.app.workspace.on('file-open', () => this.decorate()));

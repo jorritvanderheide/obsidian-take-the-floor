@@ -32,12 +32,12 @@ export function fit(room: { width: number; height: number }, slide: { width: num
 }
 
 /**
- * Whether a note looks like slides, for showing it a Present button: it has a
- * rule, as Obsidian reads it. `***` counts too, which `slidesOf` leaves on its
- * slide, so this only decides what to offer. Present works on any note.
+ * Whether a note says it's a presentation, for showing it a Present button.
+ * Its `---` lines can't say so, because a normal note uses them as dividers.
+ * This only decides what to offer: Present works on any note.
  */
-export function looksLikeSlides(sections: { type: string }[] | undefined): boolean {
-	return sections?.some((section) => section.type === 'thematicBreak') ?? false;
+export function isPresentation(frontmatter: Record<string, unknown> | undefined): boolean {
+	return frontmatter?.presentation === true;
 }
 
 /** Where a talk is. */
