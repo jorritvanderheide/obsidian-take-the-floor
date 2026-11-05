@@ -129,10 +129,10 @@ export async function renderTalk(context: Context, file: TFile, asks: Asks = { d
 	if (warnings && asks.missing) new Notice(warnings, 10000);
 
 	const page = new DOMParser().parseFromString(html, 'text/html');
-	const made = Array.from(page.querySelectorAll('.slide')).map((slide) => ({ html: slide.outerHTML, closing: slide.classList.contains('references') }));
+	const made = Array.from(page.body.querySelectorAll(':scope > .slide')).map((slide) => ({ html: slide.outerHTML, closing: slide.classList.contains('references') }));
 	const slides = withNotes(made, deck.notes);
 	if (slides === null) {
-		throw new ExportError(`Take the Floor found ${deck.notes.length} slides in ${file.basename}, and pandoc made a different number, so your notes could show over the wrong slide. This is a bug. Please open an issue with the note, or a short one that does the same.`);
+		throw new ExportError(`Take the Floor found ${deck.notes.length} slides in ${file.basename}, and pandoc made a different number, so your notes could show over the wrong slide. This usually means a line of --- inside an HTML block, which can't end a slide. Move it out of the block. If there's none, this is a bug: please open an issue with the note.`);
 	}
 	return slides;
 }
