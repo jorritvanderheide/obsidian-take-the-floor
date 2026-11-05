@@ -153,3 +153,33 @@
 .take-the-floor-no-notes {
 	color: var(--text-faint);
 }
+
+/* Present in a note's title bar: a word with its mark, as In the Open and Paper Trail show
+ * a note's status, so they read alike. */
+.view-action.take-the-floor-present {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	border-radius: var(--radius-s);
+	background-color: var(--background-modifier-hover);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	white-space: nowrap;
+}
+
+/* The square a theme gives the bar's buttons, taken back for a word. */
+.workspace-leaf .view-header .view-actions .view-action.take-the-floor-present {
+	width: auto;
+	padding: 0 var(--size-4-2);
+}
+
+/* The mark keeps a glyph's size while the word sets its own. */
+.take-the-floor-present-icon {
+	display: flex;
+	align-items: center;
+}
+
+.take-the-floor-present-icon svg {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}

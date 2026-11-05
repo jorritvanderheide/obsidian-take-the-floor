@@ -1,7 +1,7 @@
 // A Present button in the title bar of a note that looks like slides.
 //
 // Wiring only: what looks like slides is core/talk.ts's to say.
-import { MarkdownView, type App, type TFile } from 'obsidian';
+import { MarkdownView, setIcon, type App, type TFile } from 'obsidian';
 import { looksLikeSlides } from '../core/talk';
 
 const BUTTON = 'take-the-floor-present';
@@ -16,13 +16,18 @@ export function decorate(app: App, present: (file: TFile) => void, presenting: b
 	for (const leaf of app.workspace.getLeavesOfType('markdown')) {
 		if (!(leaf.view instanceof MarkdownView)) continue;
 		const view = leaf.view;
-		// Reads the view when it's clicked: a view outlives the notes shown in it.
-		const button =
-			view.containerEl.querySelector<HTMLElement>(`.${BUTTON}`) ??
-			view.addAction('presentation', 'Present', () => {
+		let button = view.containerEl.querySelector<HTMLElement>(`.${BUTTON}`);
+		if (!button) {
+			// Reads the view when it's clicked: a view outlives the notes shown in it.
+			button = view.addAction('presentation', 'Present', () => {
 				if (view.file) present(view.file);
 			});
-		button.addClass(BUTTON);
+			button.addClass(BUTTON);
+			// A word with its mark, the way In the Open shows a post's status.
+			button.empty();
+			setIcon(button.createSpan({ cls: 'take-the-floor-present-icon' }), 'presentation');
+			button.createSpan({ text: 'Present' });
+		}
 		const file = view.file;
 		button.toggle(!presenting && file !== null && looksLikeSlides(app.metadataCache.getFileCache(file)?.sections));
 	}
