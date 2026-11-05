@@ -1,3 +1,5 @@
+<img src="https://raw.githubusercontent.com/jorritvanderheide/obsidian-take-the-floor/main/images/icon.png" alt="" width="64" height="64">
+
 # Take the Floor
 
 **Present a note as slides, with its links turned into real citations and your speaker notes on your own screen.**
