@@ -23,4 +23,6 @@ What changed in each release of Take the Floor, newest first.
   key brings the same slide back.
 - **Preview slides** opens a tab with every slide of a note, which updates as you
   save, and marks any that are too long.
+- **Export slides to PDF** makes a PDF with one slide to a page, without your notes.
+  It needs no LaTeX.
 - The slides follow your Obsidian theme and CSS snippets.

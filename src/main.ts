@@ -1,5 +1,6 @@
 import { Notice, Plugin, TFile } from 'obsidian';
 import { ExportError } from 'obsidian-citation-core';
+import { exportPdf } from './commands/pdf';
 import { chooseScreen, Presentation } from './commands/presentation';
 import { renderTalk } from './commands/render';
 import { loadSettings, type Settings } from './core/settings';
@@ -61,6 +62,16 @@ export default class TakeTheFloor extends Plugin {
 				return true;
 			},
 		});
+		this.addCommand({
+			id: 'export-pdf',
+			name: 'Export slides to PDF',
+			checkCallback: (checking) => {
+				const file = this.app.workspace.getActiveFile();
+				if (file?.extension !== 'md') return false;
+				if (!checking) this.attempt(exportPdf(this, file));
+				return true;
+			},
+		});
 		during('next-slide', 'Next slide', (talk) => talk.move(1));
 		during('previous-slide', 'Previous slide', (talk) => talk.move(-1));
 		during('blank', 'Blank the screen', (talk) => talk.toggleBlank());
@@ -72,7 +83,15 @@ export default class TakeTheFloor extends Plugin {
 		});
 		this.registerEvent(
 			this.app.workspace.on('file-menu', (menu, file) => {
-				if (!(file instanceof TFile) || file.extension !== 'md' || this.presentation !== null) return;
+				if (!(file instanceof TFile) || file.extension !== 'md') return;
+				menu.addItem((item) =>
+					item
+						.setTitle('Export slides to PDF')
+						.setIcon('file-output')
+						.setSection('action')
+						.onClick(() => this.attempt(exportPdf(this, file))),
+				);
+				if (this.presentation !== null) return;
 				menu.addItem((item) =>
 					item
 						.setTitle('Present')
@@ -139,7 +158,12 @@ export default class TakeTheFloor extends Plugin {
 					this.decorate();
 				});
 				this.decorate();
-				await this.presentation.open();
+				try {
+					await this.presentation.open();
+				} catch (error) {
+					this.presentation?.end();
+					throw error;
+				}
 			})().finally(() => {
 				this.starting = false;
 			}),
@@ -151,7 +175,6 @@ export default class TakeTheFloor extends Plugin {
 		done.catch((error: unknown) => {
 			if (!(error instanceof ExportError)) console.error(error);
 			new Notice(error instanceof Error ? error.message : String(error), 0);
-			this.presentation?.end();
 		});
 	}
 }

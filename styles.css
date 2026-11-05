@@ -93,6 +93,29 @@
 	pointer-events: none;
 }
 
+/* The slides as a PDF, one to a page, only while printing. Each is its own page, without the
+   scale they get on a screen. */
+.take-the-floor-print {
+	display: none;
+}
+
+@media print {
+	.take-the-floor-print {
+		display: block;
+	}
+
+	.take-the-floor-print .take-the-floor-stage {
+		position: relative;
+		left: 0;
+		top: 0;
+		transform: none;
+		background: var(--background-primary);
+		print-color-adjust: exact;
+		break-inside: avoid;
+		break-after: page;
+	}
+}
+
 /* The pane with your notes. */
 .take-the-floor-notes-bar {
 	display: flex;

@@ -33,7 +33,21 @@ declare module 'electron' {
 		setFullScreen(on: boolean): void;
 		focus(): void;
 	}
+	export const shell: {
+		openPath(path: string): Promise<string>;
+		showItemInFolder(path: string): void;
+	};
 	export const remote: {
+		dialog: {
+			showSaveDialog(options: {
+				defaultPath?: string;
+				filters?: { name: string; extensions: string[] }[];
+				properties?: string[];
+			}): Promise<{ canceled: boolean; filePath?: string }>;
+		};
+		getCurrentWebContents(): {
+			printToPDF(options: { printBackground: boolean; pageSize: { width: number; height: number }; margins: { top: number; bottom: number; left: number; right: number } }): Promise<Uint8Array>;
+		};
 		BrowserWindow: { getAllWindows(): BrowserWindow[] };
 		getCurrentWindow(): BrowserWindow;
 		powerSaveBlocker: {
