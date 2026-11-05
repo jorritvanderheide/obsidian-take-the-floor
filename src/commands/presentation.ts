@@ -152,12 +152,11 @@ export class Presentation {
 	}
 
 	/**
-	 * And back in. A cable takes a while to settle: the screen can be announced
+	 * Back in, or plugged in for the first time when you started without it. A cable takes a while to settle: the screen can be announced
 	 * before niri can use it, and niri moves the window back by itself on its own
 	 * time. So this keeps trying until the slideshow fills that screen.
 	 */
 	private async foundScreen(): Promise<void> {
-		if (this.screen === null) return;
 		let failure: unknown = null;
 		for (let tries = 0; tries < RETURN_TRIES && !this.ended; tries++) {
 			if (this.slideshow?.isFullScreen()) {
